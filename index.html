@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Nature Finder ranks U.S. National Parks by activity match, affordability, and park experience using live National Park Service data.">
+<title>Nature Finder</title>
+<style>
+/* Layout: inputs column on the left, live results on the right, API log and Model Transparency box underneath. */
+:root{--bg:#6B4A32;--hd:#FBF3E6;--hd2:#E6D3BC;--panel:#FCF8F1;--ink:#2A1D14;--mute:#6A5646;--line:#D9C8B3;--field:#FFFFFF;--pine:#2F5D3A;--btn:#2F5D3A;--btntx:#FFFFFF;--sky:#2B6A8A;--tint:#E8EFDF;--warn:#8A4B08;--warnbg:#FFF3DC;--bad:#9B2C1F;--badbg:#FDECE8;color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#241812;--hd:#F2E6D4;--hd2:#CDB89F;--panel:#33241A;--ink:#F1E7DA;--mute:#BCA68F;--line:#4A382A;--field:#241812;--pine:#8FCB9B;--btn:#8FCB9B;--btntx:#14251A;--sky:#8CC3DC;--tint:#2D3A28;--warn:#F2B66B;--warnbg:#3A2A14;--bad:#F29B8E;--badbg:#3E1F1A;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#241812;--hd:#F2E6D4;--hd2:#CDB89F;--panel:#33241A;--ink:#F1E7DA;--mute:#BCA68F;--line:#4A382A;--field:#241812;--pine:#8FCB9B;--btn:#8FCB9B;--btntx:#14251A;--sky:#8CC3DC;--tint:#2D3A28;--warn:#F2B66B;--warnbg:#3A2A14;--bad:#F29B8E;--badbg:#3E1F1A;color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1,h2{font-family:Georgia,"Times New Roman",serif;margin:0}
+header,main,footer{max-width:1120px;margin:0 auto}
+header{padding-block:22px 14px}
+h1{font-size:36px;letter-spacing:-.5px;color:var(--hd)}
+.q{margin:6px 0 0;color:var(--hd2);max-width:70ch}
+main{padding-bottom:20px;display:grid;grid-template-columns:330px minmax(0,1fr);gap:18px}
+main>*{min-width:0}
+@media(max-width:860px){main{grid-template-columns:minmax(0,1fr)}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px}
+h2{font-size:19px;margin-bottom:10px}
+label,.lb{display:block;font-weight:600;font-size:13px;margin:12px 0 4px}
+select,input[type=number],input[type=text]{width:100%;padding:8px;border:1px solid var(--line);border-radius:6px;background:var(--field);color:var(--ink);font:inherit}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.chk{display:grid;grid-template-columns:1fr 1fr;gap:4px 10px}
+.chk label,label.inline{font-weight:400;font-size:14px;margin:0;display:flex;gap:6px;align-items:center}
+label.inline{margin-top:12px}
+.sl{display:grid;grid-template-columns:1fr 66px;align-items:center;gap:0 8px}
+.sl .lb{grid-column:1/3;margin-bottom:0}
+input[type=range]{width:100%;accent-color:var(--pine)}
+.sl output{font-weight:700;text-align:right;font-size:13px}
+button{width:100%;margin-top:16px;padding:11px;border:0;border-radius:8px;background:var(--btn);color:var(--btntx);font:600 15px system-ui;cursor:pointer}
+button:hover{filter:brightness(1.12)}
+button:disabled{opacity:.65;cursor:progress}
+button:focus-visible,select:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid var(--sky);outline-offset:2px}
+footer{padding-block:6px 28px;font-size:12.5px;color:var(--hd2)}
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px}
+@media(max-width:600px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.k{border:1.5px solid var(--pine);border-radius:8px;padding:10px;text-align:center;background:var(--panel)}
+.k b{display:block;font:700 24px Georgia,serif;color:var(--pine)}.k span{font-size:12px;color:var(--mute)}.k i{display:block;font-size:11px;color:var(--mute);font-style:normal;overflow-wrap:anywhere}
+.res{border:1px solid var(--line);border-radius:8px;padding:12px;margin-bottom:10px;background:var(--panel)}
+.res.best{border:2px solid var(--pine);background:var(--tint)}
+.top{display:flex;justify-content:space-between;gap:10px;align-items:baseline;flex-wrap:wrap}
+.top strong{font:700 17px Georgia,serif}.top a{color:inherit}
+.tag{background:var(--btn);color:var(--btntx);font:700 11px system-ui;padding:2px 8px;border-radius:4px;margin-left:8px}
+.bar{height:10px;background:var(--line);border-radius:5px;margin:8px 0 6px;overflow:hidden}.bar div{height:100%;background:var(--pine)}
+.sub{font-size:12.5px;color:var(--mute)}
+.why li{margin:4px 0}.why ul{padding-left:18px;margin:0}
+.tp{grid-column:1/-1;border:2.5px solid var(--warn);background:var(--warnbg);border-radius:10px;padding:14px 18px}
+.tp h2{color:var(--warn)}.tp ul{margin:0;padding-left:18px}.tp li{margin:5px 0}
+.empty{padding:18px;border:1px dashed var(--line);border-radius:8px;color:var(--mute)}
+.msg{margin-top:10px;padding:9px 11px;border-radius:6px;font-size:13px}
+.msg.bad{background:var(--badbg);color:var(--bad);border:1px solid var(--bad)}
+.msg.warn{background:var(--warnbg);color:var(--warn);border:1px solid var(--warn)}
+#status{margin-top:10px}
+.api{grid-column:1/-1}
+#log{list-style:none;margin:0;padding:0;font:12.5px/1.6 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;overflow-wrap:anywhere}
+#log li{padding:2px 0;border-bottom:1px dotted var(--line)}
+#log .ok::before{content:"OK  ";color:var(--pine);font-weight:700}
+#log .bad::before{content:"ERR ";color:var(--bad);font-weight:700}
+#log .info::before{content:"... ";color:var(--mute)}
+</style></head><body>
+<header><h1>Nature Finder</h1>
+<p class="q">Which national park should I visit? Pick your state, activities, budget, and priorities. Parks are ranked by activity match, affordability, and park experience (scenic + walking).</p></header>
+<main>
+<section class="card" aria-label="Inputs"><h2>Inputs</h2>
+<label for="key">NPS API key</label><input id="key" type="text" autocomplete="off" spellcheck="false">
+<label for="st">State</label><select id="st"></select>
+<div class="lb">Activities (select any)</div><div class="chk" id="acts"></div>
+<div class="row"><div><label for="days">Days of stay</label><input id="days" type="number" min="1" max="14" value="2"></div>
+<div><label for="bud">Daily budget ($)</label><input id="bud" type="number" min="1" value="60"></div></div>
+<label class="inline"><input type="checkbox" id="pets"> Traveling with pets (keep parks where NPS lists pets as permitted)</label>
+<div class="row"><div><label for="from">Starting city (optional)</label><select id="from"></select></div>
+<div><label for="mi">Max distance (miles)</label><input id="mi" type="number" min="50" step="50" value="500"></div></div>
+<div class="lb" style="margin-top:18px">Weights (0 to 10)</div>
+<div class="sl"><span class="lb">Activity Match</span><input type="range" id="w0" aria-label="Activity Match weight" min="0" max="10" value="8"><output id="o0">8</output></div>
+<div class="sl"><span class="lb">Affordability</span><input type="range" id="w1" aria-label="Affordability weight" min="0" max="10" value="4"><output id="o1">4</output></div>
+<div class="sl"><span class="lb">Park Experience (scenic + walking)</span><input type="range" id="w2" aria-label="Park Experience weight" min="0" max="10" value="8"><output id="o2">8</output></div>
+<button id="go" type="button">Find my park</button>
+<div class="sub" id="status" role="status">No data loaded yet. Press Find my park to call the NPS API.</div>
+<div class="msg bad" id="err" role="alert" hidden></div>
+<div class="msg warn" id="warn" hidden></div>
+<p class="sub" style="margin:10px 0 0">Pressing Find my park fetches fresh data from the NPS API. The state choice is sent to the API. Every other input and slider re-ranks the last results right away.</p></section>
+<section aria-label="Results">
+<div class="kpis" id="kpis"></div>
+<div class="card" style="margin-bottom:14px"><h2>Recommendation</h2><div id="recs"><div class="empty">Choose a state and press Find my park. The page will call the NPS API and show the top 3 parks here.</div></div></div>
+<div class="card why"><h2>Why this recommendation?</h2><div id="why"><div class="empty">The scoring math for your top park will appear here.</div></div></div></section>
+<section class="card api" aria-label="API activity"><h2>API activity</h2><ul id="log"><li class="info">Waiting for the first request.</li></ul></section>
+<section class="tp" aria-label="Model Transparency"><h2>Model Transparency</h2><ul>
+<li><b>Assumption:</b> Scores use only NPS API fields (activities, entrance fees, coordinates, pets allowed) and are scaled 0 to 100 against the parks currently being compared, so a score shows rank within this list, not an absolute grade.</li>
+<li><b>Limitation:</b> NPS activity data is often incomplete and doesn't account for lodging, activities fees and travel so affordability is based on entrance. Weather comes from outside API and is only displayed.</li>
+<li><b>What it does NOT mean:</b> A high score doesn't equate to a better trip, it does not account for closures, safety concerns, or crowds.</li>
+<li><b>What it DOES mean:</b> The #1 park is the best match for the activities, budget, days, and weights you chose today. Change any input or slider and the ranking can change. Confirm details on the park's NPS page before traveling.</li>
+</ul><p class="sub" style="margin:10px 0 0"><b>Data sources:</b> Live NPS API (parks and things-to-do) for National Park units only, plus Open-Meteo for weather. A park counts as pet-friendly if at least one of its NPS things-to-do entries is marked pets permitted (often only on certain trails or areas); if NPS lists no pet data for a park, it is kept. Hike and scenic counts come from NPS things-to-do entries and depend on how thoroughly each park is listed.</p></section>
+</main>
+<footer>Park data: National Park Service API &middot; Weather: Open-Meteo &middot; Estimates only, always confirm details on nps.gov</footer>
+<script>
+const API="https://developer.nps.gov/api/v1/";
+const DEFAULT_KEY="LWF4UfC4wtDjpW6WtqNCnJtH9BgW5v3vTfuwNS08";
+const STATES={AK:"Alaska",AS:"American Samoa",AZ:"Arizona",AR:"Arkansas",CA:"California",CO:"Colorado",FL:"Florida",HI:"Hawaii",ID:"Idaho",IN:"Indiana",KY:"Kentucky",ME:"Maine",MI:"Michigan",MN:"Minnesota",MO:"Missouri",MT:"Montana",NV:"Nevada",NM:"New Mexico",NC:"North Carolina",ND:"North Dakota",OH:"Ohio",OR:"Oregon",SC:"South Carolina",SD:"South Dakota",TN:"Tennessee",TX:"Texas",UT:"Utah",VI:"U.S. Virgin Islands",VA:"Virginia",WA:"Washington",WV:"West Virginia",WY:"Wyoming"};
+const A={H:"Hiking",R:"Rock climbing",D:"Scenic drive",P:"Photography",W:"Wildlife viewing",C:"Camping"};
+const rx={H:/hik|walk|backpack|trail/i,R:/climb|boulder/i,D:/scenic|driv/i,P:/photo/i,W:/wildlife|bird/i,C:/camp/i};
+const CITY={"Any (no distance limit)":null,"Los Angeles, CA":[34.05,-118.24],"Denver, CO":[39.74,-104.99],"Seattle, WA":[47.61,-122.33],"Chicago, IL":[41.88,-87.63],"New York, NY":[40.71,-74.01],"Atlanta, GA":[33.75,-84.39]};
+const WX={0:"clear",1:"mostly clear",2:"partly cloudy",3:"overcast",45:"fog",48:"fog",51:"light drizzle",61:"light rain",63:"rain",65:"heavy rain",71:"light snow",73:"snow",75:"heavy snow",80:"showers",95:"thunderstorms"};
+const NM=["Activity Match","Affordability","Park Experience"];
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+let P=[], loaded=false, logLines=[], wxSeq=0;
+
+/* ---------- setup ---------- */
+$("st").innerHTML='<option value="">All states (more API calls)</option>'+Object.entries(STATES).map(([c,n])=>`<option value="${c}"${c==="UT"?" selected":""}>${n}</option>`).join("");
+$("from").innerHTML=Object.keys(CITY).map(c=>`<option>${c}</option>`).join("");
+$("acts").innerHTML=Object.entries(A).map(([k,v])=>`<label><input type="checkbox" value="${k}"${"HRP".includes(k)?" checked":""}> ${v}</label>`).join("");
+try{$("key").value=localStorage.getItem("nf_key")||DEFAULT_KEY}catch(e){$("key").value=DEFAULT_KEY}
+
+/* ---------- API log and errors ---------- */
+function log(msg,cls){logLines.push(`<li class="${cls}">${esc(msg)}</li>`);if(logLines.length>40)logLines.shift();$("log").innerHTML=logLines.join("")}
+function showErr(m){$("err").textContent=m;$("err").hidden=!m}
+function showWarn(m){$("warn").textContent=m;$("warn").hidden=!m}
+const HTTPMSG=s=>s===401||s===403?`The NPS API rejected this key (HTTP ${s}). Check the key and try again.`:s===429?"This key has hit the NPS rate limit (HTTP 429). Wait a few minutes and try again.":s===400?"The NPS API did not accept the request (HTTP 400).":`The NPS API returned an error (HTTP ${s}).`;
+
+/* ---------- NPS API calls ---------- */
+async function npsGet(path,params,key){
+  const u=new URL(API+path);
+  Object.entries(params).forEach(([k,v])=>u.searchParams.set(k,v));
+  let shown="GET /"+path+u.search; if(shown.length>110)shown=shown.slice(0,107)+"...";
+  u.searchParams.set("api_key",key);
+  const ctl=new AbortController(), tm=setTimeout(()=>ctl.abort(),25000);
+  let r;
+  try{r=await fetch(u.toString(),{signal:ctl.signal})}
+  catch(e){clearTimeout(tm);log(shown+" failed, no response","bad");
+    throw new Error(e&&e.name==="AbortError"?"The NPS API took too long to answer. Try again.":"Could not reach developer.nps.gov. Check your internet connection or turn off ad blockers for this page, then try again.")}
+  clearTimeout(tm);
+  if(!r.ok){log(`${shown} returned HTTP ${r.status}`,"bad");throw new Error(HTTPMSG(r.status))}
+  let j; try{j=await r.json()}catch(e){log(shown+" returned unreadable data","bad");throw new Error("The NPS API sent a response that could not be read.")}
+  if(!j||!Array.isArray(j.data)){log(shown+" returned an unexpected shape","bad");throw new Error("The NPS API sent an unexpected response.")}
+  log(`${shown} returned HTTP ${r.status}, ${j.data.length} of ${j.total} records`,"ok");
+  return j;
+}
+async function npsAll(path,params,key){
+  const first=await npsGet(path,{...params,limit:500,start:0},key);
+  const out=first.data.slice(), total=+first.total||out.length, size=first.data.length;
+  if(size&&out.length<total){
+    const starts=[]; for(let s=size;s<total&&starts.length<40;s+=size)starts.push(s);
+    const rest=await Promise.all(starts.map(s=>npsGet(path,{...params,limit:500,start:s},key)));
+    rest.forEach(r=>out.push(...r.data));
+  }
+  return out;
+}
+
+/* ---------- turn API records into one row per park ---------- */
+function build(parks,todo,todoOk){
+  const by={};
+  todo.forEach(t=>(t.relatedParks||[]).forEach(r=>{(by[r.parkCode]=by[r.parkCode]||[]).push(t)}));
+  const has=(names,re)=>names.some(n=>re.test(n));
+  const tn=t=>(t.activities||[]).map(a=>a.name).concat(t.title||"");
+  return parks.map(p=>{
+    const mine=by[p.parkCode]||[], pn=(p.activities||[]).map(a=>a.name), names=pn.concat(mine.flatMap(tn));
+    const hikes=todoOk?mine.filter(t=>has(tn(t),rx.H)).length:(has(pn,rx.H)?1:0);
+    const scenic=todoOk?mine.filter(t=>{const n=tn(t);return has(n,rx.D)||has(n,rx.P)||has(n,rx.W)}).length:pn.filter(n=>rx.D.test(n)||rx.P.test(n)||rx.W.test(n)).length;
+    const fees=p.entranceFees||[], v=fees.find(x=>/vehicle/i.test(x.title||""))||fees[0];
+    const pv=mine.map(t=>t.arePetsPermitted).filter(x=>x!==undefined&&x!==null&&x!=="");
+    const pets=pv.length?(pv.some(x=>x===true||x==="true")?1:0):((p.arePetsPermitted===false||p.arePetsPermitted==="false")?0:1);
+    return{n:p.fullName,st:(p.states||"").trim(),fee:v?(parseFloat(v.cost)||0):0,pets,lat:parseFloat(p.latitude),lng:parseFloat(p.longitude),hikes,scenic,
+      codes:Object.keys(rx).filter(k=>has(names,rx[k])).join(""),url:p.url||""};
+  });
+}
+
+/* ---------- button: input -> API call -> results ---------- */
+async function findParks(){
+  const key=$("key").value.trim(), st=$("st").value;
+  showErr("");showWarn("");
+  if(!key){showErr("Enter an NPS API key first.");return}
+  try{localStorage.setItem("nf_key",key)}catch(e){}
+  $("go").disabled=true;$("go").textContent="Calling the NPS API...";
+  $("status").textContent="Calling the NPS API...";
+  log(`Request started for ${st||"all states"}`,"info");
+  try{
+    const raw=await npsAll("parks",st?{stateCode:st}:{},key);
+    const parks=raw.filter(p=>/National Park/i.test(p.designation||""));
+    let todo=[], todoOk=true;
+    if(parks.length){
+      try{todo=await npsAll("thingstodo",{parkCode:parks.map(p=>p.parkCode).join(",")},key)}
+      catch(e){todoOk=false;showWarn("The things-to-do data could not be loaded, so Park Experience is estimated only from each park's activity list. "+e.message)}
+    }
+    P=build(parks,todo,todoOk);loaded=true;
+    $("status").textContent=`Live NPS API data: ${P.length} National Park${P.length===1?"":"s"} loaded for ${st?STATES[st]:"all states"} at ${new Date().toLocaleTimeString()}.`;
+    render();
+  }catch(e){
+    showErr(e.message);
+    $("status").textContent="The request failed. See the message above and the API activity log.";
+  }finally{
+    $("go").disabled=false;$("go").textContent="Find my park";
+  }
+}
+
+/* ---------- scoring and display (no API calls) ---------- */
+const miles=(a,b,c,d)=>{const r=x=>x*Math.PI/180,h=Math.sin(r(c-a)/2)**2+Math.cos(r(a))*Math.cos(r(c))*Math.sin(r(d-b)/2)**2;return 7918*Math.asin(Math.sqrt(h))};
+function weights(){
+  const raw=[0,1,2].map(i=>+$("w"+i).value), sum=raw.reduce((a,b)=>a+b,0), w=sum?raw.map(x=>x/sum):[1/3,1/3,1/3];
+  [0,1,2].forEach(i=>$("o"+i).textContent=raw[i]+" ("+Math.round(w[i]*100)+"%)");
+  return{raw,w};
+}
+function render(){
+  const{raw,w}=weights();
+  if(!loaded)return;
+  const sel=[...document.querySelectorAll("#acts input:checked")].map(i=>i.value), days=Math.max(1,+$("days").value||1), bud=Math.max(1,+$("bud").value||1);
+  const org=CITY[$("from").value], maxmi=+$("mi").value||0;
+  const L=P.filter(p=>(!$("pets").checked||p.pets)&&(!org||miles(org[0],org[1],p.lat,p.lng)<=maxmi));
+  if(!L.length){$("kpis").innerHTML="";$("why").innerHTML="";
+    $("recs").innerHTML='<div class="empty">No parks match these filters. Try another state, raise the max distance, or turn off the pet filter.</div>';return}
+  const mh=Math.max(1,...L.map(p=>p.hikes)), ms=Math.max(1,...L.map(p=>p.scenic));
+  const R=L.map(p=>{
+    const am=sel.length?100*sel.filter(a=>p.codes.includes(a)).length/sel.length:100, cpd=p.fee/days,
+      af=Math.max(0,100*(1-cpd/bud)), pe=.5*(100*p.hikes/mh)+.5*(100*p.scenic/ms), sc=w[0]*am+w[1]*af+w[2]*pe;
+    return{n:p.n,st:p.st,url:p.url,lat:p.lat,lng:p.lng,fee:p.fee,cpd,s:[am,af,pe].map(Math.round),sc};
+  }).sort((a,b)=>b.sc-a.sc||b.s[0]-a.s[0]||a.cpd-b.cpd);
+  const t=R[0], f=x=>x.toFixed(2);
+  $("kpis").innerHTML=[["Best park score",Math.round(t.sc)+" / 100",t.n],["Activity match",t.s[0]+"%",sel.length?`${Math.round(t.s[0]*sel.length/100)} of ${sel.length} selected`:"no activities selected"],
+    ["Est. cost per day","$"+f(t.cpd),`$${t.fee} fee / ${days} day${days>1?"s":""}`],["Parks compared",L.length,"after your filters"]]
+    .map(k=>`<div class="k"><span>${esc(k[0])}</span><b>${esc(k[1])}</b><i>${esc(k[2])}</i></div>`).join("");
+  const nm=r=>/^https:\/\/www\.nps\.gov\//.test(r.url)?`<a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.n)}</a>`:esc(r.n);
+  $("recs").innerHTML=R.slice(0,3).map((r,i)=>`<div class="res ${i?"":"best"}"><div class="top"><strong>${i+1}) ${nm(r)} (${esc(r.st)})${i?"":'<span class="tag">Best option</span>'}</strong><strong>Score: ${Math.round(r.sc)}</strong></div>
+  <div class="bar"><div style="width:${Math.max(0,Math.min(100,r.sc))}%"></div></div><div class="sub">Activity Match ${r.s[0]} | Affordability ${r.s[1]} | Park Experience ${r.s[2]} | Est. $${f(r.cpd)}/day${i?"":" | Weather: <span id='wx'>loading...</span>"}</div></div>`).join("");
+  let why=`<li><b>Your weights</b> (sliders ${raw.join(" / ")}) became ${NM.map((n,i)=>`${n} ${Math.round(w[i]*100)}%`).join(", ")}.</li>
+  <li><b>${esc(t.n)}:</b> ${f(w[0])} × ${t.s[0]} + ${f(w[1])} × ${t.s[1]} + ${f(w[2])} × ${t.s[2]} = ${t.sc.toFixed(1)}, shown as ${Math.round(t.sc)}.</li>`;
+  if(R[1]){const s=R[1], d=[0,1,2].map(i=>w[i]*(t.s[i]-s.s[i])), hi=d.indexOf(Math.max(...d)), lo=d.indexOf(Math.min(...d));
+    why+=`<li><b>Why #1:</b> ${esc(t.n)} leads mainly on ${NM[hi]} (+${d[hi].toFixed(1)} weighted points over ${esc(s.n)}).</li>`;
+    if(d[lo]<0)why+=`<li><b>Why not #2:</b> ${esc(s.n)} is stronger on ${NM[lo]} (+${(-d[lo]).toFixed(1)} weighted points), but not enough to close the gap.</li>`;}
+  else why+=`<li>Only one park passed your filters, so there is nothing to compare it with.</li>`;
+  $("why").innerHTML="<ul>"+why+"</ul>";
+  weather(t);
+}
+
+/* ---------- weather for the top park (display only, not scored) ---------- */
+async function weather(t){
+  const my=++wxSeq, e=$("wx"); if(!e)return;
+  if(isNaN(t.lat)||isNaN(t.lng)){e.textContent="unavailable";return}
+  try{
+    const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${t.lat}&longitude=${t.lng}&current=temperature_2m,weather_code&temperature_unit=fahrenheit`);
+    const c=(await r.json()).current;
+    if(my===wxSeq&&$("wx"))$("wx").textContent=`${Math.round(c.temperature_2m)} F, ${WX[c.weather_code]||"changing conditions"} (Open-Meteo, not scored)`;
+  }catch(x){if(my===wxSeq&&$("wx"))$("wx").textContent="unavailable"}
+}
+
+/* ---------- events ---------- */
+document.querySelectorAll("input,select").forEach(e=>{if(e.id!=="key"&&e.id!=="st")e.addEventListener("input",render)});
+$("go").addEventListener("click",findParks);
+weights();
+</script></body></html>
